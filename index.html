@@ -18,7 +18,6 @@ html, body{
     color:white;
 }
 
-/* HEADER */
 header{
     text-align:center;
     padding:12px;
@@ -27,7 +26,6 @@ header{
     border-bottom:1px solid rgba(0,255,200,0.4);
 }
 
-/* ROOM SCREEN */
 #roomScreen{
     position:fixed;
     inset:0;
@@ -59,14 +57,12 @@ header{
     font-weight:bold;
 }
 
-/* CHAT */
 #chat{
     height:calc(100vh - 140px);
     overflow-y:auto;
     padding:12px;
 }
 
-/* MESSAGE */
 .msg{
     background:linear-gradient(145deg,#001a2a,#002b3a,#001018);
     padding:12px;
@@ -74,7 +70,6 @@ header{
     border-radius:14px;
 }
 
-/* INPUT BAR */
 .bottom{
     position:fixed;
     bottom:0;
@@ -110,7 +105,7 @@ button{
 
 <body>
 
-<!-- ROOM SELECT -->
+<!-- ROOM SCREEN -->
 <div id="roomScreen">
     <h2>💀 Enter Room Code</h2>
 
@@ -133,7 +128,7 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded }
+import { getDatabase, ref, push, onChildAdded, remove } 
 from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
 
 /* FIREBASE CONFIG */
@@ -147,7 +142,6 @@ const firebaseConfig = {
   appId: "1:770205565259:web:c49a750cc2ceba041228ce"
 };
 
-/* INIT */
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -165,13 +159,19 @@ window.joinRoom = function(){
     enterRoom(room, name);
 };
 
-/* LOBBY (PUBLIC ROOM) */
+/* LOBBY */
 window.joinLobby = function(){
     const name = document.getElementById("nameInput").value.trim() || "Ghost";
     enterRoom("LOBBY", name);
 };
 
-/* CORE ROOM FUNCTION */
+/* CLEAR ROOM CHAT */
+function clearRoom(room){
+    const roomRef = ref(db, "rooms/" + room + "/messages");
+    remove(roomRef);
+}
+
+/* ENTER ROOM */
 function enterRoom(room, name){
     currentRoom = room;
 
@@ -184,10 +184,13 @@ function enterRoom(room, name){
 
     chatRef = ref(db, "rooms/" + room + "/messages");
 
+    // 🔥 RESET CHAT WHEN ENTERING
+    clearRoom(room);
+
     listenMessages();
 }
 
-/* REALTIME LISTENER */
+/* LISTEN */
 function listenMessages(){
     onChildAdded(chatRef, (snap)=>{
         const d = snap.val();
