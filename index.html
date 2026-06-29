@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Legend Chat Pro - Rooms</title>
+<title>Legend Chat Pro - Storm Mode</title>
 
 <meta name="theme-color" content="#001a2a">
 
@@ -18,28 +18,26 @@ html, body{
     color:white;
 }
 
-/* 🌧️ BLUE RAIN CANVAS */
+/* 🌧️ BLUE RAIN (FULL SCREEN) */
 #rainCanvas{
     position:fixed;
-    top:0;
-    left:0;
+    inset:0;
     width:100%;
     height:100%;
-    z-index:0;
+    z-index:9999;
     pointer-events:none;
+    mix-blend-mode:screen;
+    opacity:0.85;
 }
 
-/* 🔥 BLUE FLAME GLOW */
+/* 🔥 BLUE FLAME ATMOSPHERE */
 #flameLayer{
     position:fixed;
-    bottom:0;
-    left:0;
-    width:100%;
-    height:40%;
-    pointer-events:none;
+    inset:0;
     z-index:1;
+    pointer-events:none;
     background:radial-gradient(circle at bottom,
-        rgba(0,180,255,0.25),
+        rgba(0,170,255,0.25),
         rgba(0,80,255,0.08),
         transparent 70%);
     filter:blur(2px);
@@ -51,6 +49,7 @@ html, body{
     100%{opacity:1; transform:scale(1.02);}
 }
 
+/* HEADER */
 header{
     position:relative;
     z-index:2;
@@ -61,6 +60,7 @@ header{
     border-bottom:1px solid rgba(0,255,200,0.4);
 }
 
+/* ROOM SCREEN */
 #roomScreen{
     position:fixed;
     inset:0;
@@ -92,6 +92,7 @@ header{
     font-weight:bold;
 }
 
+/* CHAT */
 #chat{
     position:relative;
     z-index:2;
@@ -105,9 +106,10 @@ header{
     padding:12px;
     margin-bottom:10px;
     border-radius:14px;
-    border:1px solid rgba(0,180,255,0.2);
+    border:1px solid rgba(0,170,255,0.25);
 }
 
+/* INPUT BAR */
 .bottom{
     position:fixed;
     bottom:0;
@@ -139,12 +141,36 @@ button{
     background:linear-gradient(90deg,#00aaff,#00ffaa);
     font-weight:bold;
 }
+
+/* 💧 RIPPLE EFFECT */
+.ripple{
+    position:fixed;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:2px solid rgba(0,170,255,0.8);
+    transform:translate(-50%,-50%);
+    animation:ripple 0.8s ease-out forwards;
+    pointer-events:none;
+    z-index:9999;
+}
+
+@keyframes ripple{
+    0%{
+        transform:translate(-50%,-50%) scale(1);
+        opacity:1;
+    }
+    100%{
+        transform:translate(-50%,-50%) scale(10);
+        opacity:0;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<!-- 🌧️ RAIN + 🔥 FLAME LAYERS -->
+<!-- 🌧️ RAIN + 🔥 FLAME -->
 <canvas id="rainCanvas"></canvas>
 <div id="flameLayer"></div>
 
@@ -174,7 +200,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/fireba
 import { getDatabase, ref, push, onChildAdded, remove }
 from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
 
-/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBDTQ4_06Z3dt-c_GYgvrTmsKng7C42rS8",
   authDomain: "legendsamiam.firebaseapp.com",
@@ -191,13 +216,11 @@ const db = getDatabase(app);
 let currentRoom = null;
 let chatRef = null;
 
-/* JOIN ROOM */
+/* ROOM */
 window.joinRoom = function(){
     const room = document.getElementById("roomInput").value.trim().toUpperCase();
     const name = document.getElementById("nameInput").value.trim() || "Ghost";
-
     if(!room) return;
-
     enterRoom(room, name);
 };
 
@@ -257,32 +280,43 @@ window.sendMessage = function(){
     document.getElementById("message").value = "";
 };
 
-/* 🌧️ BLUE RAIN EFFECT */
+/* 🌧️ RAIN SYSTEM */
 const canvas = document.getElementById("rainCanvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
 let drops = [];
 
-for(let i=0;i<120;i++){
-    drops.push({
-        x: Math.random()*canvas.width,
-        y: Math.random()*canvas.height,
-        len: Math.random()*20+10,
-        speed: Math.random()*4+4
-    });
+function initRain(){
+    drops = [];
+    let count = 180;
+
+    for(let i=0;i<count;i++){
+        drops.push({
+            x: Math.random()*canvas.width,
+            y: Math.random()*canvas.height,
+            len: Math.random()*25 + 10,
+            speed: Math.random()*7 + 4,
+            thick: Math.random()*1.5 + 0.5
+        });
+    }
 }
+initRain();
 
 function drawRain(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    ctx.strokeStyle = "rgba(0,170,255,0.5)";
-    ctx.lineWidth = 1;
-
     for(let d of drops){
         ctx.beginPath();
+        ctx.strokeStyle = "rgba(0,170,255,0.6)";
+        ctx.lineWidth = d.thick;
+
         ctx.moveTo(d.x, d.y);
         ctx.lineTo(d.x, d.y + d.len);
         ctx.stroke();
@@ -297,8 +331,17 @@ function drawRain(){
 
     requestAnimationFrame(drawRain);
 }
-
 drawRain();
+
+/* 💧 RIPPLE */
+document.addEventListener("click", (e)=>{
+    const ripple = document.createElement("div");
+    ripple.className = "ripple";
+    ripple.style.left = e.clientX + "px";
+    ripple.style.top = e.clientY + "px";
+    document.body.appendChild(ripple);
+    setTimeout(()=> ripple.remove(), 800);
+});
 </script>
 
 </body>
