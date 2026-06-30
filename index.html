@@ -59,9 +59,9 @@ body::after{
     inset:0;
     width:100%;
     height:100%;
-    z-index:9997;
+    z-index:9996;
     pointer-events:none;
-    opacity:0.7;
+    opacity:0.75;
 }
 
 /* HEADER */
@@ -146,6 +146,7 @@ input{
 
 #name{width:90px;}
 #message{flex:1;}
+
 button{
     padding:12px 14px;
     border:none;
@@ -181,7 +182,7 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, query, orderByChild, startAt, remove }
+import { getDatabase, ref, push, onChildAdded }
 from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -200,7 +201,7 @@ const db = getDatabase(app);
 let chatRef;
 let currentRoom;
 
-/* ROOM SYSTEM */
+/* ROOM */
 window.joinRoom = function(){
     const room = document.getElementById("roomInput").value.trim().toUpperCase();
     const name = document.getElementById("nameInput").value.trim() || "Ghost";
@@ -227,10 +228,10 @@ function enterRoom(room, name){
     chatRef = ref(db, "rooms/" + room + "/messages");
 
     listenMessages();
-    startAutoCleanup();
+    startAutoCleanup(); // 💀 AUTO DELETE ON
 }
 
-/* 💬 LISTEN */
+/* 💬 CHAT LISTENER */
 function listenMessages(){
     onChildAdded(chatRef, (snap)=>{
         const d = snap.val();
@@ -262,7 +263,7 @@ window.sendMessage = function(){
     document.getElementById("message").value = "";
 };
 
-/* ⏳ AUTO DELETE (10 MIN CLEANUP LOOP) */
+/* ⏳ AUTO DELETE (10 MIN CLEANUP) */
 function startAutoCleanup(){
     setInterval(async () => {
         const cutoff = Date.now() - 10 * 60 * 1000;
@@ -282,8 +283,59 @@ function startAutoCleanup(){
                 );
             }
         }
-    }, 30000); // every 30 seconds
+    }, 30000);
 }
+</script>
+
+<!-- 🌧️ RAIN SYSTEM -->
+<script>
+const canvas = document.getElementById("rainCanvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const drops = [];
+const count = 260;
+
+for(let i=0;i<count;i++){
+    drops.push({
+        x: Math.random()*window.innerWidth,
+        y: Math.random()*window.innerHeight,
+        len: Math.random()*20+10,
+        speed: Math.random()*7+4,
+        opacity: Math.random()*0.4+0.2
+    });
+}
+
+function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let d of drops){
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(255,0,0,${d.opacity})`;
+        ctx.lineWidth = 1;
+
+        ctx.moveTo(d.x,d.y);
+        ctx.lineTo(d.x,d.y+d.len);
+        ctx.stroke();
+
+        d.y += d.speed;
+
+        if(d.y > canvas.height){
+            d.y = -20;
+            d.x = Math.random()*canvas.width;
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+animate();
 </script>
 
 </body>
