@@ -157,32 +157,38 @@ button{
 }
 
 @keyframes ripple{
-    0%{
-        transform:translate(-50%,-50%) scale(1);
-        opacity:1;
-    }
-    100%{
-        transform:translate(-50%,-50%) scale(10);
-        opacity:0;
-    }
+    0%{transform:translate(-50%,-50%) scale(1); opacity:1;}
+    100%{transform:translate(-50%,-50%) scale(10); opacity:0;}
 }
-
+</style>
+<style>
 /* FULL PAGE BACKGROUND IMAGE */
 body {
     margin: 0;
     padding: 0;
     height: 100vh;
 
-    background-image: url("wolf.png");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background-image: url("wolf.png"); /* <-- your image file */
+    background-size: cover;            /* makes it fill screen */
+    background-position: center;       /* centers image */
+    background-repeat: no-repeat;      /* stops tiling */
+    background-attachment: fixed;      /* keeps it still when scrolling */
 
     font-family: Arial, sans-serif;
     color: white;
 }
+
+/* optional overlay so text is readable */
+.overlay {
+    background: rgba(0, 0, 0, 0.6);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
 </style>
+
 
 </head>
 
@@ -191,7 +197,6 @@ body {
 <canvas id="rainCanvas"></canvas>
 <div id="flameLayer"></div>
 
-<!-- ROOM SCREEN -->
 <div id="roomScreen">
     <h2>💀 Enter Room Code</h2>
 
@@ -202,7 +207,7 @@ body {
     <button onclick="joinLobby()">Enter Lobby (Public Chat)</button>
 </div>
 
-<header id="roomTitle">💀 Legend Chat Pro 💀</header>
+<header id="roomTitle">💀 Legend Chat Pro 💀 | 👥 Online: 0</header>
 
 <div id="chat"></div>
 
@@ -214,7 +219,7 @@ body {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, remove }
+import { getDatabase, ref, push, onChildAdded, remove, set, onDisconnect, onValue }
 from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -232,9 +237,9 @@ const db = getDatabase(app);
 
 let currentRoom = null;
 let chatRef = null;
+let presenceRef = null;
 
-/* 👥 LIVE USER TRACKING */
-let userSet = new Set();
+let userId = Math.random().toString(36).substring(2, 10);
 
 /* ROOM */
 window.joinRoom = function(){
@@ -254,6 +259,28 @@ function clearRoom(room){
     remove(roomRef);
 }
 
+/* 👥 PRESENCE SYSTEM */
+function setupPresence(room, name){
+    presenceRef = ref(db, "rooms/" + room + "/presence/" + userId);
+
+    set(presenceRef, {
+        name,
+        online: true
+    });
+
+    onDisconnect(presenceRef).remove();
+
+    const allPresence = ref(db, "rooms/" + room + "/presence");
+
+    onValue(allPresence, (snap)=>{
+        const data = snap.val() || {};
+        const count = Object.keys(data).length;
+
+        document.getElementById("roomTitle").innerText =
+        "💀 Room: " + room + " | 👥 Online: " + count;
+    });
+}
+
 function enterRoom(room, name){
     currentRoom = room;
 
@@ -267,22 +294,14 @@ function enterRoom(room, name){
 
     chatRef = ref(db, "rooms/" + room + "/messages");
 
-    userSet.clear();
-
     clearRoom(room);
+    setupPresence(room, name);
     listenMessages();
 }
 
 function listenMessages(){
     onChildAdded(chatRef, (snap)=>{
         const d = snap.val();
-
-        // track unique names
-        userSet.add(d.name);
-
-        // update header live
-        document.getElementById("roomTitle").innerText =
-            `💀 Room: ${currentRoom} | 👥 Online: ${userSet.size}`;
 
         const div = document.createElement("div");
         div.className = "msg";
@@ -310,7 +329,7 @@ window.sendMessage = function(){
     document.getElementById("message").value = "";
 };
 
-/* 🌧️ RAIN SYSTEM */
+/* 🌧️ RAIN */
 const canvas = document.getElementById("rainCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -325,9 +344,7 @@ let drops = [];
 
 function initRain(){
     drops = [];
-    let count = 180;
-
-    for(let i=0;i<count;i++){
+    for(let i=0;i<180;i++){
         drops.push({
             x: Math.random()*canvas.width,
             y: Math.random()*canvas.height,
@@ -363,7 +380,7 @@ function drawRain(){
 }
 drawRain();
 
-/* 💧 RIPPLE */
+/* RIPPLE */
 document.addEventListener("click", (e)=>{
     const ripple = document.createElement("div");
     ripple.className = "ripple";
